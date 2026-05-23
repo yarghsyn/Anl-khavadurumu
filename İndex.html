@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hava Durumu </title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        
+        body { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh;
+            background: #060911;
+            overflow: hidden;
+            position: relative;
+            padding: 20px;
+        }
+
+        #weather-bg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Kristal Şeffaf Panel */
+        .card { 
+            width: 440px; 
+            padding: 35px 30px; 
+            background: rgba(255, 255, 255, 0.01); 
+            border: 1px solid rgba(255, 255, 255, 0.15); 
+            border-radius: 32px;
+            backdrop-filter: blur(25px); 
+            -webkit-backdrop-filter: blur(25px);
+            box-shadow: 0 40px 100px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.15);
+            text-align: center; 
+            color: white; 
+            position: relative;
+            z-index: 10;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        h2 { font-size: 1.8rem; font-weight: 600; margin-bottom: 6px; letter-spacing: -0.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .subtitle { color: #e2e8f0; font-size: 0.85rem; margin-bottom: 25px; text-shadow: 0 1px 5px rgba(0,0,0,0.3); }
+
+        .input-group { margin-bottom: 18px; text-align: left; }
+        .input-group label { display: block; font-size: 0.8rem; margin-bottom: 6px; font-weight: 500; color: #ffffff; }
+        .input-group input { 
+            width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.08); 
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 14px; color: white; outline: none;
+        }
+        
+        .btn-main { 
+            width: 100%; padding: 14px; background: #ffffff; border: none; border-radius: 14px; 
+            color: #0f172a; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+        }
+        .btn-main:hover { background: #f8fafc; box-shadow: 0 10px 25px rgba(255,255,255,0.2); }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; color: #fca5a5;
+            padding: 12px; border-radius: 12px; margin-bottom: 18px; font-size: 0.85rem; display: none;
+        }
+
+        .search-box { display: flex; gap: 8px; margin-bottom: 15px; }
+        .search-box input {
+            flex: 1; padding: 12px 16px; background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 14px; color: white; outline: none; font-size: 0.9rem;
+        }
+        .search-box button {
+            padding: 12px 16px; background: rgba(255,255,255,0.15); border: none;
+            border-radius: 14px; color: white; cursor: pointer; transition: 0.2s;
+        }
+        .search-box button:hover { background: rgba(255, 255, 255, 0.25); }
+
+        .fast-regions { display: flex; gap: 8px; margin-bottom: 20px; justify-content: flex-start; }
+        .region-tag {
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+            padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; color: #ffffff; cursor: pointer; transition: 0.2s;
+        }
+        .region-tag:hover { background: rgba(255,255,255,0.25); }
+
+        .weather-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .location { font-size: 1.4rem; font-weight: 600; text-align: left; text-transform: uppercase; letter-spacing: -0.5px; }
+        .location p { font-size: 0.8rem; color: #e2e8f0; font-weight: 400; text-transform: none; margin-top: 1px; }
+
+        .weather-icon-wrap { font-size: 4.2rem; margin: 10px 0; display: inline-block; filter: drop-shadow(0 4px 15px rgba(0,0,0,0.4)); }
+        .temperature { font-size: 4rem; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+        .weather-desc { font-size: 1.05rem; color: #ffffff; font-weight: 500; margin-bottom: 20px; }
+
+        .weather-details {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 18px; padding: 14px; margin-bottom: 20px;
+        }
+        .detail-box i { font-size: 1rem; color: #38bdf8; margin-bottom: 4px; }
+        .detail-box div { font-size: 0.85rem; font-weight: 600; }
+        .detail-box span { font-size: 0.7rem; color: #e2e8f0; display: block; margin-top: 1px; }
+
+        .forecast-title { text-align: left; font-size: 0.8rem; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; font-weight: 600; }
+        .forecast-container {
+            display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px;
+        }
+        .forecast-container::-webkit-scrollbar { height: 4px; }
+        .forecast-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+        .forecast-day {
+            background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px; padding: 10px; min-width: 72px; flex-shrink: 0; text-align: center;
+        }
+        .forecast-day .day-name { font-size: 0.7rem; color: #e2e8f0; text-transform: uppercase; }
+        .forecast-day i { font-size: 1.2rem; margin: 6px 0; display: block; }
+        .forecast-day .day-temp { font-size: 0.85rem; font-weight: 600; }
+
+        .loading-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(6, 9, 17, 0.85); border-radius: 32px; display: flex;
+            justify-content: center; align-items: center; z-index: 100;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .loading-overlay.active { opacity: 1; pointer-events: auto; }
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .btn-back {
+            background: transparent; border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e2e8f0; padding: 11px; border-radius: 14px; cursor: pointer; width: 100%; font-size: 0.85rem;
+        }
+        .btn-back:hover { background: rgba(239, 68, 68, 0.2); color: #ffffff; border-color: #ef4444; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <canvas id="weather-bg-canvas"></canvas>
+
+    <div id="login-block" class="card">
+        <h2>Giriş Yap</h2>
+        <p class="subtitle">Canlı Meteoroloji Sunucusuna Bağlanın</p>
+        <div id="error-box" class="error-message">Hatalı kullanıcı adı veya şifre!</div>
+        <form onsubmit="validateAndLogin(event)">
+            <div class="input-group">
+                <label>Kullanıcı Adı</label>
+                <input type="text" id="input-username" value="hsyn-42" required autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>Şifre</label>
+                <input type="password" id="input-password" value="yargı" required>
+            </div>
+            <button type="submit" class="btn-main">Sisteme Giriş Yap</button>
+        </form>
+    </div>
+
+    <div id="dashboard-block" class="card hidden">
+        <div id="loading" class="loading-overlay"><div class="spinner"></div></div>
+
+        <div class="search-box">
+            <input type="text" id="search-city" placeholder="Şehir veya İlçe adı girin...">
+            <button onclick="fetchLiveWeatherData()"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+
+        <div class="fast-regions">
+            <div class="region-tag" onclick="quickLoad('Selcuklu')">📍 Selçuklu</div>
+            <div class="region-tag" onclick="quickLoad('Tepekent')">📍 Tepekent</div>
+            <div class="region-tag" onclick="quickLoad('Konya')">📍 Konya</div>
+        </div>
+
+        <div class="weather-header">
+            <div class="location">
+                <span id="city-title">KONYA</span>
+                <p id="sub-title">Uydudan Anlık Canlı Veri</p>
+            </div>
+            <div style="font-size: 0.8rem; color: #e2e8f0;" id="live-date">Bugün</div>
+        </div>
+
+        <div class="weather-icon-wrap" id="icon-container">
+            <i class="fa-solid fa-sun" style="color: #fde047;"></i>
+        </div>
+
+        <div class="temperature" id="temp-display">--°C</div>
+        <div class="weather-desc" id="desc-display">Yükleniyor...</div>
+
+        <div class="weather-details">
+            <div class="detail-box">
+                <i class="fa-solid fa-wind"></i>
+                <div id="wind-display">-- km/s</div>
+                <span>Rüzgâr</span>
+            </div>
+            <div class="detail-box">
+                <i class="fa-solid fa-droplet"></i>
+                <div id="humidity-display">--</div>
+                <span>Nem</span>
+            </div>
+            <div class="detail-box">
+                <i class="fa-solid fa-cloud-rain"></i>
+                <div id="rain-display">--</div>
+                <span>Yağış</span>
+            </div>
+        </div>
+
+        <div class="forecast-title">7 Günlük Canlı Hava Tahmini</div>
+        <div class="forecast-container" id="forecast-wrapper">
+            </div>
+
+        <button class="btn-back" onclick="logout()"><i class="fa-solid fa-power-off" style="margin-right: 6px;"></i> Güvenli Çıkış</button>
+    </div>
+
+    <script>
+        const localDataMatrix = {
+            "konya": { name: "Konya Merkez", reg: "İç Anadolu", temp: 22, wind: 12, hum: 40, rain: 0, code: 0, desc: "Tamamen Güneşli", mode: "sunny" },
+            "selçuklu": { name: "Selçuklu", reg: "Konya", temp: 21, wind: 14, hum: 42, rain: 0, code: 1, desc: "Parçalı Bulutlu", mode: "cloudy" },
+            "selcuklu": { name: "Selçuklu", reg: "Konya", temp: 21, wind: 14, hum: 42, rain: 0, code: 1, desc: "Parçalı Bulutlu", mode: "cloudy" },
+            "tepekent": { name: "Tepekent", reg: "Selçuklu / Konya", temp: 19, wind: 18, hum: 50, rain: 2, code: 51, desc: "Gök Gürültülü Sağanak Yağışlı", mode: "rainy" }
+        };
+
+        // GLOBAL SES ENGINE BAĞLANTILARI
+        const audioTracks = {
+            sunny: new Audio('https://assets.mixkit.co/active_storage/sfx/2438/2438-500.wav'), 
+            cloudy: new Audio('https://assets.mixkit.co/active_storage/sfx/1183/1183-500.wav'), 
+            rainy: new Audio('https://assets.mixkit.co/active_storage/sfx/2443/2443-500.wav'), 
+            snowy: new Audio('https://assets.mixkit.co/active_storage/sfx/1185/1185-500.wav')  
+        };
+
+        Object.keys(audioTracks).forEach(key => {
+            audioTracks[key].loop = true;
+            audioTracks[key].volume = 0.4;
+        });
+
+        function switchAtmosSound(mode) {
+            Object.keys(audioTracks).forEach(key => {
+                audioTracks[key].pause();
+                audioTracks[key].currentTime = 0;
+            });
+            if (audioTracks[mode]) {
+                // Güvenli çalma mekanizması (Hata basmasını engeller)
+                let playPromise = audioTracks[mode].play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("Ses çalma işlemi kullanıcı etkileşimi sonrasına ertelendi.");
+                    });
+                }
+            }
+        }
+
+        const canvas = document.getElementById('weather-bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let animationId, particles = [], splashes = [], currentWeatherType = 'sunny', globalWind = 1.0;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            initPhysicsEngine();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function initPhysicsEngine() {
+            particles = []; splashes = [];
+            let count = currentWeatherType === 'rainy' ? 150 : (currentWeatherType === 'snowy' ? 130 : 35);
+            for (let i = 0; i < count; i++) {
+                if (currentWeatherType === 'rainy') {
+                    particles.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, length: Math.random() * 15 + 20, speed: Math.random() * 10 + 14, opacity: Math.random() * 0.4 + 0.2 });
+                } else if (currentWeatherType === 'snowy') {
+                    let sizeLayer = Math.random() * 3.5 + 0.5;
+                    particles.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, radius: sizeLayer, speed: sizeLayer * 0.4 + 0.3, swing: Math.random() * 2, swingSpeed: Math.random() * 0.02 + 0.01, opacity: Math.random() * 0.6 + 0.3 });
+                } else if (currentWeatherType === 'cloudy') {
+                    particles.push({ x: Math.random() * canvas.width * 1.5 - canvas.width * 0.25, y: Math.random() * canvas.height * 0.5, radiusX: Math.random() * 140 + 100, radiusY: Math.random() * 60 + 40, speed: Math.random() * 0.25 + 0.05 });
+                }
+            }
+        }
+
+        let sunTimer = 0;
+        function runAtmosRender() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (currentWeatherType === 'sunny') {
+                let skyGrad = ctx.createRadialGradient(canvas.width/2, canvas.height * 0.3, 50, canvas.width/2, canvas.height * 0.3, canvas.width);
+                skyGrad.addColorStop(0, '#1d4ed8'); skyGrad.addColorStop(0.5, '#1e3a8a'); skyGrad.addColorStop(1, '#060911');
+                ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                sunTimer += 0.0015; ctx.save(); ctx.translate(canvas.width/2, canvas.height * 0.3); ctx.rotate(sunTimer);
+                ctx.fillStyle = 'rgba(253, 224, 71, 0.02)';
+                for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-40, canvas.width * 1.5); ctx.lineTo(40, canvas.width * 1.5); ctx.closePath(); ctx.fill(); }
+                ctx.restore();
+            } else if (currentWeatherType === 'cloudy') {
+                let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height); skyGrad.addColorStop(0, '#334155'); skyGrad.addColorStop(1, '#060911');
+                ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+                particles.forEach(p => { ctx.beginPath(); ctx.ellipse(p.x, p.y, p.radiusX, p.radiusY, 0, 0, Math.PI * 2); ctx.fill(); p.x += p.speed; if (p.x - p.radiusX > canvas.width) p.x = -p.radiusX; });
+            } else if (currentWeatherType === 'rainy') {
+                let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height); skyGrad.addColorStop(0, '#1e293b'); skyGrad.addColorStop(1, '#020617');
+                ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = 'rgba(173, 216, 230, 0.65)'; ctx.lineWidth = 1.2;
+                particles.forEach(p => {
+                    ctx.beginPath(); ctx.globalAlpha = p.opacity; ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + globalWind, p.y + p.length); ctx.stroke();
+                    p.y += p.speed; p.x += globalWind * 0.3;
+                    if (p.y > canvas.height - 20) {
+                        if (Math.random() > 0.4) splashes.push({ x: p.x, y: canvas.height - Math.random() * 20, r: Math.random() * 3 + 1, life: 1.0, death: Math.random() * 0.05 + 0.04 });
+                        p.y = -p.length; p.x = Math.random() * canvas.width;
+                    }
+                });
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                splashes.forEach((s, idx) => { ctx.beginPath(); ctx.globalAlpha = s.life; ctx.arc(s.x, s.y, s.r * (2 - s.life), Math.PI, 0); ctx.stroke(); s.life -= s.death; if (s.life <= 0) splashes.splice(idx, 1); });
+                ctx.globalAlpha = 1.0;
+            } else if (currentWeatherType === 'snowy') {
+                let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height); skyGrad.addColorStop(0, '#3f4e63'); skyGrad.addColorStop(1, '#0a0f1d');
+                ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                particles.forEach(p => { ctx.beginPath(); ctx.globalAlpha = p.opacity; ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); p.y += p.speed; p.swing += p.swingSpeed; p.x += Math.sin(p.swing) * 0.6 + (globalWind * 0.2); if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; } });
+                ctx.globalAlpha = 1.0;
+            }
+            animationId = requestAnimationFrame(runAtmosRender);
+        }
+
+        async function fetchLiveWeatherData() {
+            const cityInput = document.getElementById('search-city').value.trim();
+            if (!cityInput) return;
+
+            const loader = document.getElementById('loading');
+            loader.classList.add('active');
+
+            let searchKey = cityInput.toLowerCase();
+            let lat = 37.87, lon = 32.48;
+            let formattedName = cityInput.toUpperCase();
+            let countryInfo = "Türkiye";
+            let useFallback = false;
+
+            try {
+                const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityInput)}&count=1&language=tr&format=json`;
+                const geoRes = await fetch(geoUrl);
+                const geoData = await geoRes.json();
+                if (geoData.results && geoData.results.length > 0) {
+                    lat = geoData.results[0].latitude;
+                    lon = geoData.results[0].longitude;
+                    formattedName = geoData.results[0].name;
+                    countryInfo = geoData.results[0].admin1 ? `${geoData.results[0].admin1}, TR` : "Türkiye";
+                } else { useFallback = true; }
+            } catch (e) { useFallback = true; }
+
+            try {
+                if (useFallback && localDataMatrix[searchKey]) {
+                    renderStaticData(localDataMatrix[searchKey]);
+                    loader.classList.remove('active');
+                    return;
+                }
+
+                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&daily=weather_code,temperature_2m_max,time&timezone=auto`;
+                const weatherRes = await fetch(weatherUrl);
+                const weatherData = await weatherRes.json();
+
+                if (!weatherData || !weatherData.current) { throw new Error("Kısıtlama"); }
+
+                document.getElementById('city-title').innerText = formattedName;
+                document.getElementById('sub-title').innerText = countryInfo;
+                document.getElementById('temp-display').innerText = `${Math.round(weatherData.current.temperature_2m)}°C`;
+                document.getElementById('wind-display').innerText = `${Math.round(weatherData.current.wind_speed_10m)} km/s`;
+                document.getElementById('humidity-display').innerText = `%${weatherData.current.relative_humidity_2m}`;
+                document.getElementById('rain-display').innerText = `${weatherData.current.precipitation} mm`;
+
+                let code = weatherData.current.weather_code;
+                let mode = 'sunny', desc = 'Açık Gökyüzü', icon = `<i class="fa-solid fa-sun" style="color: #fde047;"></i>`;
+
+                if (code >= 1 && code <= 3) { mode = 'cloudy'; desc = 'Parçalı Bulutlu'; icon = `<i class="fa-solid fa-cloud-sun" style="color: #cbd5e1;"></i>`; }
+                else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) { mode = 'rainy'; desc = 'Gök Gürültülü Sağanak Yağış'; icon = `<i class="fa-solid fa-cloud-showers-heavy" style="color: #60a5fa;"></i>`; }
+                else if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) { mode = 'snowy'; desc = 'Kar Yağışlı'; icon = `<i class="fa-solid fa-snowflake" style="color: #93c5fd;"></i>`; }
+                else if (code > 3) { mode = 'cloudy'; desc = 'Bulutlu / Sisli'; icon = `<i class="fa-solid fa-cloud" style="color: #94a3b8;"></i>`; }
+
+                document.getElementById('desc-display').innerText = desc;
+                document.getElementById('icon-container').innerHTML = icon;
+
+                renderForecastHTML(weatherData.daily);
+
+                currentWeatherType = mode;
+                globalWind = weatherData.current.wind_speed_10m > 15 ? 3.0 : 1.0;
+                initPhysicsEngine();
+                switchAtmosSound(mode);
+
+            } catch (error) {
+                let backup = localDataMatrix[searchKey] || { name: cityInput.toUpperCase(), reg: "Bölge", temp: 23, wind: 10, hum: 45, rain: 0, code: 0, desc: "Açık Gökyüzü", mode: "sunny" };
+                renderStaticData(backup);
+            } finally {
+                loader.classList.remove('active');
+            }
+        }
+
+        function renderStaticData(data) {
+            document.getElementById('city-title').innerText = data.name;
+            document.getElementById('sub-title').innerText = data.reg;
+            document.getElementById('temp-display').innerText = `${data.temp}°C`;
+            document.getElementById('wind-display').innerText = `${data.wind} km/s`;
+            document.getElementById('humidity-display').innerText = `%${data.hum}`;
+            document.getElementById('rain-display').innerText = `${data.rain} mm`;
+            document.getElementById('desc-display').innerText = data.desc;
+            
+            let icon = `<i class="fa-solid fa-sun" style="color: #fde047;"></i>`;
+            if(data.mode === 'cloudy') icon = `<i class="fa-solid fa-cloud-sun" style="color: #cbd5e1;"></i>`;
+            else if(data.mode === 'rainy') icon = `<i class="fa-solid fa-cloud-showers-heavy" style="color: #60a5fa;"></i>`;
+            else if(data.mode === 'snowy') icon = `<i class="fa-solid fa-snowflake" style="color: #93c5fd;"></i>`;
+            
+            document.getElementById('icon-container').innerHTML = icon;
+
+            let fakeDaily = { time: [], weather_code: [], temperature_2m_max: [] };
+            let baseDate = new Date();
+            for(let i=0; i<7; i++) {
+                let nextDate = new Date(baseDate); nextDate.setDate(baseDate.getDate() + i);
+                fakeDaily.time.push(nextDate.toISOString().split('T')[0]);
+                fakeDaily.weather_code.push(data.code);
+                fakeDaily.temperature_2m_max.push(data.temp + Math.round(Math.random() * 4 - 2));
+            }
+            renderForecastHTML(fakeDaily);
+
+            currentWeatherType = data.mode;
+            globalWind = data.wind > 15 ? 3.0 : 1.0;
+            initPhysicsEngine();
+            switchAtmosSound(data.mode);
+        }
+
+        function renderForecastHTML(dailyData) {
+            const wrapper = document.getElementById('forecast-wrapper');
+            wrapper.innerHTML = '';
+            const gunler = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+            
+            for(let i = 0; i < 7; i++) {
+                const d = new Date(dailyData.time[i]);
+                const gAd = i === 0 ? "Bugün" : gunler[d.getDay()];
+                const wCode = dailyData.weather_code[i];
+                
+                let fIcon = 'fa-sun'; let fColor = '#fde047';
+                if(wCode >= 1 && wCode <= 3) { fIcon = 'fa-cloud-sun'; fColor = '#cbd5e1'; }
+                else if((wCode >= 51 && wCode <= 67) || (wCode >= 80 && wCode <= 82)) { fIcon = 'fa-cloud-showers-heavy'; fColor = '#60a5fa'; }
+                else if((wCode >= 71 && wCode <= 77) || (wCode >= 85 && wCode <= 86)) { fIcon = 'fa-snowflake'; fColor = '#93c5fd'; }
+                else if(wCode > 3) { fIcon = 'fa-cloud'; fColor = '#94a3b8'; }
+
+                wrapper.innerHTML += `
+                    <div class="forecast-day">
+                        <div class="day-name">${gAd}</div>
+                        <i class="fa-solid ${fIcon}" style="color: ${fColor};"></i>
+                        <div class="day-temp">${Math.round(dailyData.temperature_2m_max[i])}°C</div>
+                    </div>
+                `;
+            }
+        }
+
+        function quickLoad(name) {
+            document.getElementById('search-city').value = name;
+            fetchLiveWeatherData();
+        }
+
+        function validateAndLogin(event) {
+            event.preventDefault();
+            if (document.getElementById('input-username').value === 'hsyn-42' && document.getElementById('input-password').value === 'yargı') {
+                const options = { weekday: 'long', month: 'long', day: 'numeric' };
+                document.getElementById('live-date').innerText = new Date().toLocaleDateString('tr-TR', options);
+                
+                document.getElementById('login-block').classList.add('hidden');
+                document.getElementById('dashboard-block').classList.remove('hidden');
+                
+                // CRITICAL FIX: Kullanıcı butona bastığı an etkileşim gerçekleştiği için hemen ilk sesi başlatıyoruz
+                resizeCanvas();
+                runAtmosRender();
+                quickLoad('Konya'); 
+            } else {
+                document.getElementById('error-box').style.display = 'block';
+            }
+        }
+
+        function logout() {
+            cancelAnimationFrame(animationId);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            Object.keys(audioTracks).forEach(key => {
+                audioTracks[key].pause();
+                audioTracks[key].currentTime = 0;
+            });
+            document.getElementById('search-city').value = '';
+            document.getElementById('login-block').classList.remove('hidden');
+            document.getElementById('dashboard-block').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
